@@ -3,18 +3,23 @@
 
 import { formatCents, type SummaryCategoryShare } from './api';
 
-/** Fixed, pleasant palette. Cycles with modulo if there are more categories than colors. */
+/**
+ * Fixed, pleasant palette tuned for the dark surface (#181818). First slot is
+ * the brand green; the rest are a tasteful dark-theme categorical set that
+ * still reads clearly against near-black. Cycles with modulo if there are
+ * more categories than colors.
+ */
 const PALETTE = [
-  '#a63d2f', // rust
-  '#c98a2c', // ochre
-  '#2f6f4f', // forest
-  '#3d6b8a', // steel blue
-  '#7a4f8a', // plum
-  '#8a6d3b', // brass
-  '#4f7a6b', // moss teal
-  '#b0562f', // terracotta
-  '#5c5c8a', // indigo slate
-  '#9b8c4f', // olive gold
+  '#1ed760', // brand green
+  '#539df5', // announce blue
+  '#ffa42b', // warning orange
+  '#f3727f', // negative pink-red
+  '#c86dd7', // violet
+  '#ffd166', // gold
+  '#2ec4b6', // teal
+  '#ff8a65', // coral
+  '#8ecae6', // sky
+  '#b8b3f5', // lavender
 ];
 
 export function colorForIndex(i: number): string {

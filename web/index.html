@@ -3,9 +3,10 @@
 <head>
   <meta charset="UTF-8" />
   <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover" />
-  <meta name="color-scheme" content="light dark" />
+  <meta name="color-scheme" content="dark" />
+  <meta name="theme-color" content="#121212" />
   <title>The Simplest Account</title>
-  <link rel="icon" href="data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 100 100'%3E%3Ccircle cx='50' cy='50' r='46' fill='%232f6f4f'/%3E%3Ctext x='50' y='68' font-size='58' text-anchor='middle' fill='%23f3ead9' font-family='Georgia,serif'%3E%C2%A7%3C/text%3E%3C/svg%3E" />
+  <link rel="icon" href="data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 100 100'%3E%3Ccircle cx='50' cy='50' r='46' fill='%231ed760'/%3E%3Ctext x='50' y='68' font-size='58' text-anchor='middle' fill='%23121212' font-family='Arial,sans-serif' font-weight='bold'%3E%C2%A7%3C/text%3E%3C/svg%3E" />
   <link rel="stylesheet" href="./style.css" />
 </head>
 <body>
@@ -70,57 +71,61 @@
       </nav>
 
       <main class="ledger-main">
-        <section id="balance-card" class="card balance-card" aria-live="polite">
-          <!-- filled by main.ts -->
-        </section>
+        <div class="ledger-primary">
+          <section id="balance-card" class="card balance-card" aria-live="polite">
+            <!-- filled by main.ts -->
+          </section>
 
-        <section class="card quick-add">
-          <h2 class="section-title">Add an entry</h2>
-          <form id="quick-add-form" novalidate>
-            <div class="type-toggle" id="type-toggle" role="tablist" aria-label="Entry type">
-              <button type="button" class="type-btn active" data-type="expense" role="tab" aria-selected="true">Expense</button>
-              <button type="button" class="type-btn" data-type="income" role="tab" aria-selected="false">Income</button>
-            </div>
+          <section class="card quick-add">
+            <h2 class="section-title">Add an entry</h2>
+            <form id="quick-add-form" novalidate>
+              <div class="type-toggle" id="type-toggle" role="tablist" aria-label="Entry type">
+                <button type="button" class="type-btn active" data-type="expense" role="tab" aria-selected="true">Expense</button>
+                <button type="button" class="type-btn" data-type="income" role="tab" aria-selected="false">Income</button>
+              </div>
 
-            <div id="category-chips" class="chip-row" role="listbox" aria-label="Category"></div>
+              <div id="category-chips" class="chip-row" role="listbox" aria-label="Category"></div>
 
-            <div class="quick-add-grid">
-              <div class="field field-amount">
-                <label for="qa-amount">Amount</label>
-                <div class="amount-input-wrap">
-                  <span class="amount-prefix" aria-hidden="true">$</span>
-                  <input id="qa-amount" type="text" inputmode="decimal" placeholder="0.00" autocomplete="off" required />
+              <div class="quick-add-grid">
+                <div class="field field-amount">
+                  <label for="qa-amount">Amount</label>
+                  <div class="amount-input-wrap">
+                    <span class="amount-prefix" aria-hidden="true">$</span>
+                    <input id="qa-amount" type="text" inputmode="decimal" placeholder="0.00" autocomplete="off" required />
+                  </div>
+                </div>
+                <div class="field field-date">
+                  <label for="qa-date">Date</label>
+                  <input id="qa-date" type="date" required />
                 </div>
               </div>
-              <div class="field field-date">
-                <label for="qa-date">Date</label>
-                <input id="qa-date" type="date" required />
+
+              <div class="field field-note">
+                <label for="qa-note">Note <span class="optional">optional</span></label>
+                <input id="qa-note" type="text" placeholder="what was it for?" maxlength="200" autocomplete="off" />
               </div>
-            </div>
 
-            <div class="field field-note">
-              <label for="qa-note">Note <span class="optional">optional</span></label>
-              <input id="qa-note" type="text" placeholder="what was it for?" maxlength="200" autocomplete="off" />
-            </div>
+              <p id="qa-error" class="form-error" role="alert" hidden></p>
 
-            <p id="qa-error" class="form-error" role="alert" hidden></p>
+              <button type="submit" class="stamp-btn add-btn">
+                <span>Add entry</span>
+              </button>
+            </form>
+          </section>
+        </div>
 
-            <button type="submit" class="stamp-btn add-btn">
-              <span>Add entry</span>
-            </button>
-          </form>
-        </section>
+        <div class="ledger-secondary">
+          <section class="card distribution">
+            <h2 class="section-title">Where it went</h2>
+            <div id="chart-container" class="chart-container"></div>
+          </section>
 
-        <section class="card distribution">
-          <h2 class="section-title">Where it went</h2>
-          <div id="chart-container" class="chart-container"></div>
-        </section>
-
-        <section class="card transactions">
-          <h2 class="section-title">Entries this month</h2>
-          <div id="tx-list" class="tx-list"></div>
-          <p id="tx-empty" class="tx-empty" hidden>No entries yet — add your first one above.</p>
-        </section>
+          <section class="card transactions">
+            <h2 class="section-title">Entries this month</h2>
+            <div id="tx-list" class="tx-list"></div>
+            <p id="tx-empty" class="tx-empty" hidden>No entries yet — add your first one above.</p>
+          </section>
+        </div>
       </main>
     </div>
 
