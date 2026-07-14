@@ -370,12 +370,15 @@
   .balance-row {
     display: flex;
     justify-content: center;
-    gap: 28px;
+    flex-wrap: wrap;
+    gap: 20px;
+    row-gap: 12px;
     margin-bottom: 18px;
   }
 
   .balance-stat {
     text-align: center;
+    min-width: 64px;
   }
 
   .balance-stat-label {
@@ -393,6 +396,8 @@
   }
   .balance-stat-value.income { color: var(--brand); }
   .balance-stat-value.expense { color: var(--negative); }
+  .balance-stat-value.positive { color: var(--brand); }
+  .balance-stat-value.negative { color: var(--negative); }
 
   .balance-total-label {
     font-size: 12px;
@@ -440,6 +445,30 @@
     background: var(--brand);
     color: var(--brand-ink);
     box-shadow: 0 3px 10px -4px rgba(30, 215, 96, 0.55);
+  }
+
+  /* -- chart period toggle (day/week/month) -- */
+  .chart-toolbar {
+    display: flex;
+    flex-direction: column;
+    gap: 8px;
+    margin-bottom: 16px;
+  }
+
+  .period-toggle {
+    max-width: 220px;
+  }
+
+  .period-btn.active {
+    background: var(--brand);
+    color: var(--brand-ink);
+    box-shadow: 0 3px 10px -4px rgba(30, 215, 96, 0.55);
+  }
+
+  .chart-range-caption {
+    font-size: 12px;
+    color: var(--text-subdued);
+    font-variant-numeric: tabular-nums;
   }
 
   /* -- category chips -- */

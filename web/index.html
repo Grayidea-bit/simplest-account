@@ -121,6 +121,14 @@
         <div class="ledger-secondary">
           <section class="card distribution">
             <h2 class="section-title">Where it went</h2>
+            <div class="chart-toolbar">
+              <div class="type-toggle period-toggle" id="chart-period-toggle" role="tablist" aria-label="Chart period">
+                <button type="button" class="type-btn period-btn" data-period="day" role="tab" aria-selected="false">天</button>
+                <button type="button" class="type-btn period-btn" data-period="week" role="tab" aria-selected="false">週</button>
+                <button type="button" class="type-btn period-btn active" data-period="month" role="tab" aria-selected="true">月</button>
+              </div>
+              <p id="chart-range-caption" class="chart-range-caption"></p>
+            </div>
             <div id="chart-container" class="chart-container"></div>
           </section>
 

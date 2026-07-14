@@ -7,6 +7,7 @@ import {
   CURRENCY_ORDER,
   currencySymbol,
   currentMonth,
+  dayRange,
   deleteCategory,
   deleteTransaction,
   dollarsToCents,
@@ -23,6 +24,7 @@ import {
   patchTransaction,
   shiftMonth,
   todayIso,
+  weekRange,
   type Category,
   type RatesResponse,
   type Summary,
@@ -30,6 +32,27 @@ import {
   type TxType,
 } from './api';
 import { renderDonut } from './chart';
+
+type ChartPeriod = 'day' | 'week' | 'month';
+
+const CHART_PERIOD_STORAGE_KEY = 'sa_chart_period';
+
+function loadStoredChartPeriod(): ChartPeriod {
+  try {
+    const stored = localStorage.getItem(CHART_PERIOD_STORAGE_KEY);
+    return stored === 'day' || stored === 'week' || stored === 'month' ? stored : 'month';
+  } catch {
+    return 'month';
+  }
+}
+
+function storeChartPeriod(period: ChartPeriod): void {
+  try {
+    localStorage.setItem(CHART_PERIOD_STORAGE_KEY, period);
+  } catch {
+    // localStorage unavailable (private mode etc.) — not fatal, just won't persist.
+  }
+}
 
 const CURRENCY_STORAGE_KEY = 'sa_currency';
 
@@ -58,6 +81,9 @@ interface AppState {
   categories: Category[];
   transactions: Transaction[];
   summary: Summary | null;
+  todaySummary: Summary | null;
+  chartSummary: Summary | null;
+  chartPeriod: ChartPeriod;
   rates: RatesResponse | null;
   month: string;
   quickAddType: TxType;
@@ -70,6 +96,9 @@ const state: AppState = {
   categories: [],
   transactions: [],
   summary: null,
+  todaySummary: null,
+  chartSummary: null,
+  chartPeriod: loadStoredChartPeriod(),
   rates: null,
   month: currentMonth(),
   quickAddType: 'expense',
@@ -179,16 +208,40 @@ async function loadRates(): Promise<void> {
 }
 
 async function loadMonthData(): Promise<boolean> {
-  const [txs, summary] = await Promise.all([
+  const [txs, summary, todaySummary] = await Promise.all([
     guarded(() => getTransactions(state.month)),
     guarded(() => getSummary(state.month)),
+    guarded(() => getSummary(dayRange(todayIso()))),
   ]);
-  if (txs === undefined || summary === undefined) return false;
+  if (txs === undefined || summary === undefined || todaySummary === undefined) return false;
   state.transactions = txs;
   state.summary = summary;
+  state.todaySummary = todaySummary;
+  await loadChartSummary();
   renderBalanceCard();
+  renderChartPeriodToggle();
   renderChart();
   renderTransactionList();
+  return true;
+}
+
+/**
+ * Fetches (or reuses) the summary for the currently selected chart period.
+ * 'month' and 'day' reuse the already-fetched month/today summaries — only
+ * 'week' needs its own request.
+ */
+async function loadChartSummary(): Promise<boolean> {
+  if (state.chartPeriod === 'month') {
+    state.chartSummary = state.summary;
+    return true;
+  }
+  if (state.chartPeriod === 'day') {
+    state.chartSummary = state.todaySummary;
+    return true;
+  }
+  const summary = await guarded(() => getSummary(weekRange(todayIso())));
+  if (summary === undefined) return false;
+  state.chartSummary = summary;
   return true;
 }
 
@@ -226,6 +279,9 @@ function renderBalanceCard(): void {
     return;
   }
   const negative = s.balance < 0;
+  const today = state.todaySummary;
+  const todayNet = today ? today.income_total - today.expense_total : 0;
+  const todayNegative = todayNet < 0;
   card.innerHTML = `
     <div class="balance-row">
       <div class="balance-stat">
@@ -235,6 +291,10 @@ function renderBalanceCard(): void {
       <div class="balance-stat">
         <div class="balance-stat-label">Expense</div>
         <div class="balance-stat-value expense">${formatCents(s.expense_total)}</div>
+      </div>
+      <div class="balance-stat">
+        <div class="balance-stat-label">日餘額</div>
+        <div class="balance-stat-value ${todayNegative ? 'negative' : 'positive'}">${formatCents(todayNet)}</div>
       </div>
     </div>
     <div class="balance-total-label">Balance</div>
@@ -541,7 +601,41 @@ function wireTransactionList(): void {
 
 function renderChart(): void {
   const container = el<HTMLDivElement>('chart-container');
-  renderDonut(container, state.summary?.by_category ?? []);
+  renderDonut(container, state.chartSummary?.by_category ?? []);
+}
+
+/** Short human-readable label for the active chart period's date range. */
+function chartRangeCaption(): string {
+  if (state.chartPeriod === 'month') return state.month;
+  if (state.chartPeriod === 'day') return todayIso();
+  const { start, end } = weekRange(todayIso());
+  return `${start.slice(5)} – ${end.slice(5)}`;
+}
+
+function renderChartPeriodToggle(): void {
+  const buttons = el<HTMLDivElement>('chart-period-toggle').querySelectorAll<HTMLButtonElement>('.period-btn');
+  buttons.forEach((btn) => {
+    const isActive = btn.dataset.period === state.chartPeriod;
+    btn.classList.toggle('active', isActive);
+    btn.setAttribute('aria-selected', String(isActive));
+  });
+  el<HTMLParagraphElement>('chart-range-caption').textContent = chartRangeCaption();
+}
+
+function wireChartPeriodToggle(): void {
+  el<HTMLDivElement>('chart-period-toggle').addEventListener('click', async (e) => {
+    const target = (e.target as HTMLElement).closest<HTMLButtonElement>('.period-btn');
+    const period = target?.dataset.period;
+    if (period !== 'day' && period !== 'week' && period !== 'month') return;
+    if (period === state.chartPeriod) return;
+
+    state.chartPeriod = period;
+    storeChartPeriod(period);
+    renderChartPeriodToggle();
+
+    const ok = await loadChartSummary();
+    if (ok) renderChart();
+  });
 }
 
 // ---------------------------------------------------------------------------
@@ -793,6 +887,8 @@ function wireLogout(): void {
     state.categories = [];
     state.transactions = [];
     state.summary = null;
+    state.todaySummary = null;
+    state.chartSummary = null;
     state.editingTxId = null;
     closeCategoryModal();
     showLoginView();
@@ -805,8 +901,10 @@ async function boot(): Promise<void> {
   wireTransactionList();
   wireCategoryModal();
   wireMonthNav();
+  wireChartPeriodToggle();
   wireLogout();
   renderTypeToggle();
+  renderChartPeriodToggle();
 
   try {
     await getCategories();

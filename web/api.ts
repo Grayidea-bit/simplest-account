@@ -31,11 +31,19 @@ export interface SummaryCategoryShare {
 }
 
 export interface Summary {
-  month: string;
+  month?: string;
+  start?: string;
+  end?: string;
   income_total: number;
   expense_total: number;
   balance: number;
   by_category: SummaryCategoryShare[];
+}
+
+/** An explicit start/end (both inclusive, YYYY-MM-DD) date range. */
+export interface DateRange {
+  start: string;
+  end: string;
 }
 
 export interface NewTransactionInput {
@@ -181,8 +189,14 @@ export function deleteTransaction(id: number): Promise<{ ok: true }> {
 
 // ---- summary ----
 
-export function getSummary(month: string): Promise<Summary> {
-  return request(`/api/summary?month=${encodeURIComponent(month)}`);
+/** Fetches a summary for a whole month ("YYYY-MM") or an explicit {start,end} range (both inclusive). */
+export function getSummary(period: string | DateRange): Promise<Summary> {
+  if (typeof period === 'string') {
+    return request(`/api/summary?month=${encodeURIComponent(period)}`);
+  }
+  return request(
+    `/api/summary?start=${encodeURIComponent(period.start)}&end=${encodeURIComponent(period.end)}`,
+  );
 }
 
 // ---- rates ----
@@ -276,4 +290,33 @@ export function todayIso(): string {
   const mm = (now.getMonth() + 1).toString().padStart(2, '0');
   const dd = now.getDate().toString().padStart(2, '0');
   return `${now.getFullYear()}-${mm}-${dd}`;
+}
+
+function formatIsoUtc(d: Date): string {
+  const yy = d.getUTCFullYear();
+  const mm = (d.getUTCMonth() + 1).toString().padStart(2, '0');
+  const dd = d.getUTCDate().toString().padStart(2, '0');
+  return `${yy}-${mm}-${dd}`;
+}
+
+function parseIsoUtc(iso: string): Date {
+  const [y, m, d] = iso.split('-').map(Number);
+  return new Date(Date.UTC(y ?? 1970, (m ?? 1) - 1, d ?? 1));
+}
+
+/** A single-day range (start === end === the given date). */
+export function dayRange(iso: string): DateRange {
+  return { start: iso, end: iso };
+}
+
+/** The Monday–Sunday week (Taiwan convention) containing the given date. */
+export function weekRange(iso: string): DateRange {
+  const date = parseIsoUtc(iso);
+  const dow = date.getUTCDay(); // 0 = Sunday .. 6 = Saturday
+  const mondayOffset = dow === 0 ? -6 : 1 - dow;
+  const monday = new Date(date);
+  monday.setUTCDate(date.getUTCDate() + mondayOffset);
+  const sunday = new Date(monday);
+  sunday.setUTCDate(monday.getUTCDate() + 6);
+  return { start: formatIsoUtc(monday), end: formatIsoUtc(sunday) };
 }
