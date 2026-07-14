@@ -16,6 +16,9 @@ export interface Transaction {
   category_id: number;
   category_name: string;
   amount_cents: number;
+  currency: string;
+  fx_rate: number;
+  base_cents: number;
   note: string | null;
   occurred_on: string; // YYYY-MM-DD
 }
@@ -39,6 +42,7 @@ export interface NewTransactionInput {
   type: TxType;
   category_id: number;
   amount_cents: number;
+  currency?: string;
   note?: string;
   occurred_on: string;
 }
@@ -47,8 +51,15 @@ export interface PatchTransactionInput {
   type?: TxType;
   category_id?: number;
   amount_cents?: number;
+  currency?: string;
   note?: string | null;
   occurred_on?: string;
+}
+
+export interface RatesResponse {
+  base: string;
+  rates: Record<string, number>;
+  fetched_at: string;
 }
 
 export interface PatchCategoryInput {
@@ -174,7 +185,29 @@ export function getSummary(month: string): Promise<Summary> {
   return request(`/api/summary?month=${encodeURIComponent(month)}`);
 }
 
+// ---- rates ----
+
+export function getRates(): Promise<RatesResponse> {
+  return request('/api/rates');
+}
+
 // ---- money helpers ----
+
+/** Canonical currency order for UI display; TWD (base) always first. */
+export const CURRENCY_ORDER = ['TWD', 'USD', 'JPY', 'EUR', 'CNY'] as const;
+
+const CURRENCY_SYMBOLS: Record<string, string> = {
+  TWD: 'NT$',
+  USD: 'US$',
+  JPY: '¥',
+  EUR: '€',
+  CNY: 'CN¥',
+};
+
+/** Symbol used inside the currency picker (TWD shows "NT$" there, unlike plain "$" elsewhere). */
+export function currencySymbol(code: string): string {
+  return CURRENCY_SYMBOLS[code] ?? code;
+}
 
 /** Parses user input like "120", "120.5", "1,204.30" into integer cents. Returns null if invalid. */
 export function dollarsToCents(input: string): number | null {
@@ -195,6 +228,25 @@ export function formatCents(cents: number, signed = false): string {
   const dollarsStr = dollars.toLocaleString('en-US');
   const centsStr = remainder.toString().padStart(2, '0');
   return `${sign}$${dollarsStr}.${centsStr}`;
+}
+
+/**
+ * Formats integer cents in a given currency with its symbol, e.g. "US$12.50", "¥1,200".
+ * JPY has no minor unit, so it renders with no decimals (storage remains cents ×100).
+ */
+export function formatCurrencyCents(cents: number, currency: string, signed = false): string {
+  const symbol = currencySymbol(currency);
+  const sign = cents < 0 ? '-' : signed && cents > 0 ? '+' : '';
+  const abs = Math.abs(cents);
+  if (currency === 'JPY') {
+    const units = Math.round(abs / 100);
+    return `${sign}${symbol}${units.toLocaleString('en-US')}`;
+  }
+  const dollars = Math.floor(abs / 100);
+  const remainder = abs % 100;
+  const dollarsStr = dollars.toLocaleString('en-US');
+  const centsStr = remainder.toString().padStart(2, '0');
+  return `${sign}${symbol}${dollarsStr}.${centsStr}`;
 }
 
 export function monthLabel(month: string): string {

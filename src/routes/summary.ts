@@ -29,7 +29,7 @@ summary.get('/', async (c) => {
   const likePattern = `${month}-%`;
 
   const { results: totalsResults } = await c.env.DB.prepare(
-    `SELECT type, COALESCE(SUM(amount_cents), 0) AS total
+    `SELECT type, COALESCE(SUM(base_cents), 0) AS total
      FROM transactions
      WHERE occurred_on LIKE ?
      GROUP BY type`
@@ -48,7 +48,7 @@ summary.get('/', async (c) => {
   }
 
   const { results: byCategoryResults } = await c.env.DB.prepare(
-    `SELECT t.category_id AS category_id, c.name AS category_name, SUM(t.amount_cents) AS total
+    `SELECT t.category_id AS category_id, c.name AS category_name, SUM(t.base_cents) AS total
      FROM transactions t
      JOIN categories c ON c.id = t.category_id
      WHERE t.occurred_on LIKE ? AND t.type = 'expense'

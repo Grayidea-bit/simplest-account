@@ -12,6 +12,7 @@
 4. 秘密不入庫：`PASSCODE` 只放 `.dev.vars`（本地）或 `wrangler secret`（正式環境），不得寫入程式碼或提交進版本控制。
 5. Schema 變更一律加新 migration 檔（`migrations/` 資料夾，帶序號命名），不得修改舊的 migration 檔。
 6. TypeScript 全程 `strict` 模式，禁止使用 `any`。
+7. 外部 API 存取僅限 `src/rates.ts`（RTER.info 匯率，快取 1 小時於 `fx_rates` 表）：其他模組不得直接 fetch 外部服務。匯率為入帳時快照（存 `fx_rate`/`base_cents`），事後不得回溯改寫歷史匯率。
 
 ## 結構說明
 

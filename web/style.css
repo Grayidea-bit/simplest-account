@@ -516,20 +516,16 @@
   .amount-input-wrap {
     display: flex;
     align-items: center;
+    gap: 8px;
     min-height: var(--tap);
     background: var(--bg-elevated);
     border-radius: var(--radius-s);
-    padding: 0 12px;
+    padding: 0 10px 0 4px;
     box-shadow: var(--input-ring);
     transition: box-shadow 140ms ease;
   }
   .amount-input-wrap:focus-within {
     box-shadow: var(--input-ring-focus);
-  }
-  .amount-prefix {
-    color: var(--text-subdued);
-    font-size: 18px;
-    font-variant-numeric: tabular-nums;
   }
   #qa-amount {
     border: none;
@@ -538,8 +534,77 @@
     font-size: 18px;
     font-variant-numeric: tabular-nums;
     box-shadow: none !important;
+    flex: 1;
+    min-width: 0;
   }
   #qa-amount:focus { outline: none; }
+
+  /* -- embedded currency picker (lives inside the amount input) -- */
+  .currency-picker {
+    position: relative;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    gap: 3px;
+    height: var(--tap);
+    min-width: 44px;
+    padding: 0 10px;
+    border-radius: var(--radius-s);
+    background: #1f1f1f;
+    box-shadow: rgb(18, 18, 18) 0px 1px 0px, rgb(90, 90, 90) 0px 0px 0px 1px inset;
+    flex-shrink: 0;
+    transition: background 140ms ease, box-shadow 140ms ease;
+  }
+  .currency-picker:hover { background: var(--bg-highlight); }
+  .currency-picker:has(.currency-picker-select:focus-visible) {
+    box-shadow: var(--input-ring-focus);
+  }
+  .currency-picker-symbol {
+    font-size: 13px;
+    font-weight: 700;
+    color: var(--text-base);
+    white-space: nowrap;
+    font-variant-numeric: tabular-nums;
+  }
+  .currency-picker-caret {
+    font-size: 8px;
+    color: var(--text-subdued);
+    transform: translateY(1px);
+  }
+  .currency-picker-select {
+    position: absolute;
+    inset: 0;
+    width: 100%;
+    height: 100%;
+    margin: 0;
+    padding: 0;
+    opacity: 0;
+    border: none;
+    background: transparent;
+    appearance: none;
+    -webkit-appearance: none;
+    cursor: pointer;
+  }
+  .currency-picker-select:disabled { cursor: default; }
+  .currency-picker:has(.currency-picker-select:disabled) { opacity: 0.5; }
+
+  /* -- inline currency picker inside the edit row's amount field -- */
+  .tx-edit-amount-wrap {
+    background: var(--bg-surface);
+  }
+  .tx-edit-amount-wrap .currency-picker {
+    height: calc(var(--tap) - 8px);
+    min-width: 40px;
+    padding: 0 8px;
+  }
+  .tx-edit-amount-wrap .tx-edit-amount {
+    flex: 1;
+    min-width: 0;
+    border: none !important;
+    background: transparent !important;
+    box-shadow: none !important;
+    padding: 8px 4px !important;
+  }
 
   .field-note { margin-top: 12px; }
 
@@ -729,6 +794,25 @@
   .tx-amount.income { color: var(--brand); }
   .tx-amount.expense { color: var(--negative); }
 
+  .tx-amount-group {
+    display: flex;
+    flex-direction: column;
+    align-items: flex-end;
+    gap: 1px;
+    min-width: 0;
+  }
+  .tx-amount-group .tx-amount {
+    max-width: 100%;
+    overflow: hidden;
+    text-overflow: ellipsis;
+  }
+  .tx-amount-base {
+    font-size: 10px;
+    color: var(--text-subdued);
+    font-variant-numeric: tabular-nums;
+    white-space: nowrap;
+  }
+
   .tx-delete {
     width: var(--tap);
     height: var(--tap);
@@ -801,6 +885,22 @@
     letter-spacing: 1px;
     color: var(--text-subdued);
   }
+}
+
+@layer components {
+  .attribution {
+    margin-top: 24px;
+    padding: 0 4px;
+    text-align: center;
+    font-size: 11px;
+    color: var(--text-subdued);
+  }
+  .attribution a {
+    color: var(--text-subdued);
+    text-decoration: underline;
+    text-underline-offset: 2px;
+  }
+  .attribution a:hover { color: var(--text-base); }
 }
 
 /* ==========================================================================

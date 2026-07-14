@@ -4,12 +4,16 @@ import {
   ApiError,
   createCategory,
   createTransaction,
+  CURRENCY_ORDER,
+  currencySymbol,
   currentMonth,
   deleteCategory,
   deleteTransaction,
   dollarsToCents,
   formatCents,
+  formatCurrencyCents,
   getCategories,
+  getRates,
   getSummary,
   getTransactions,
   login,
@@ -20,11 +24,31 @@ import {
   shiftMonth,
   todayIso,
   type Category,
+  type RatesResponse,
   type Summary,
   type Transaction,
   type TxType,
 } from './api';
 import { renderDonut } from './chart';
+
+const CURRENCY_STORAGE_KEY = 'sa_currency';
+
+function loadStoredCurrency(): string {
+  try {
+    const stored = localStorage.getItem(CURRENCY_STORAGE_KEY);
+    return stored && (CURRENCY_ORDER as readonly string[]).includes(stored) ? stored : 'TWD';
+  } catch {
+    return 'TWD';
+  }
+}
+
+function storeCurrency(code: string): void {
+  try {
+    localStorage.setItem(CURRENCY_STORAGE_KEY, code);
+  } catch {
+    // localStorage unavailable (private mode etc.) — not fatal, just won't persist.
+  }
+}
 
 // ---------------------------------------------------------------------------
 // state
@@ -34,9 +58,11 @@ interface AppState {
   categories: Category[];
   transactions: Transaction[];
   summary: Summary | null;
+  rates: RatesResponse | null;
   month: string;
   quickAddType: TxType;
   quickAddCategoryId: number | null;
+  quickAddCurrency: string;
   editingTxId: number | null;
 }
 
@@ -44,11 +70,22 @@ const state: AppState = {
   categories: [],
   transactions: [],
   summary: null,
+  rates: null,
   month: currentMonth(),
   quickAddType: 'expense',
   quickAddCategoryId: null,
+  quickAddCurrency: loadStoredCurrency(),
   editingTxId: null,
 };
+
+/** Currency codes to offer, TWD first, drawn from /api/rates; falls back to TWD-only if rates failed to load. */
+function currencyOptions(): string[] {
+  const keys = state.rates ? Object.keys(state.rates.rates) : [];
+  if (keys.length === 0) return ['TWD'];
+  const known = CURRENCY_ORDER.filter((c) => keys.includes(c));
+  const extra = keys.filter((k) => !(CURRENCY_ORDER as readonly string[]).includes(k)).sort();
+  return known.length > 0 ? [...known, ...extra] : ['TWD'];
+}
 
 // ---------------------------------------------------------------------------
 // dom helpers
@@ -121,12 +158,24 @@ async function loadAll(): Promise<boolean> {
   state.categories = cats;
   ensureQuickAddCategory();
 
+  await loadRates();
+  renderQuickAddCurrency();
+
   const ok = await loadMonthData();
   if (!ok) return false;
 
   renderMonthHeader();
   renderCategoryChips();
   return true;
+}
+
+/** Fetches /api/rates for the currency picker. Failure degrades gracefully to TWD-only — no toast, no crash. */
+async function loadRates(): Promise<void> {
+  try {
+    state.rates = await getRates();
+  } catch {
+    state.rates = null;
+  }
 }
 
 async function loadMonthData(): Promise<boolean> {
@@ -206,6 +255,19 @@ function renderTypeToggle(): void {
   });
 }
 
+function renderQuickAddCurrency(): void {
+  const select = el<HTMLSelectElement>('qa-currency');
+  const symbolEl = el<HTMLSpanElement>('qa-currency-symbol');
+  const options = currencyOptions();
+  if (!options.includes(state.quickAddCurrency)) {
+    state.quickAddCurrency = 'TWD';
+  }
+  select.innerHTML = options.map((c) => `<option value="${c}">${c}</option>`).join('');
+  select.value = state.quickAddCurrency;
+  select.disabled = options.length <= 1;
+  symbolEl.textContent = currencySymbol(state.quickAddCurrency);
+}
+
 function renderCategoryChips(): void {
   const row = el<HTMLDivElement>('category-chips');
   const options = categoriesOfType(state.quickAddType);
@@ -240,6 +302,13 @@ function wireQuickAddForm(): void {
 
   el<HTMLInputElement>('qa-date').value = todayIso();
 
+  el<HTMLSelectElement>('qa-currency').addEventListener('change', () => {
+    const select = el<HTMLSelectElement>('qa-currency');
+    state.quickAddCurrency = select.value;
+    storeCurrency(state.quickAddCurrency);
+    el<HTMLSpanElement>('qa-currency-symbol').textContent = currencySymbol(state.quickAddCurrency);
+  });
+
   el<HTMLFormElement>('quick-add-form').addEventListener('submit', async (e) => {
     e.preventDefault();
     const errorEl = el<HTMLParagraphElement>('qa-error');
@@ -272,6 +341,7 @@ function wireQuickAddForm(): void {
         type: state.quickAddType,
         category_id: state.quickAddCategoryId!,
         amount_cents: cents,
+        currency: state.quickAddCurrency,
         occurred_on: dateInput.value,
         ...(note ? { note } : {}),
       }),
@@ -298,6 +368,20 @@ function formatShortDate(iso: string): string {
   return `${parts[1] ?? '--'}-${parts[2] ?? '--'}`;
 }
 
+/** TWD rows keep the plain "$1,234.56" look; other currencies show their own symbol plus a dimmed TWD equivalent. */
+function renderTxAmount(tx: Transaction): string {
+  const sign = tx.type === 'income';
+  if (tx.currency === 'TWD') {
+    return `<div class="tx-amount ${sign ? 'income' : 'expense'}">${formatCents(tx.amount_cents, sign)}</div>`;
+  }
+  return `
+    <div class="tx-amount-group">
+      <div class="tx-amount ${sign ? 'income' : 'expense'}">${formatCurrencyCents(tx.amount_cents, tx.currency, sign)}</div>
+      <div class="tx-amount-base">&#8776; ${formatCents(tx.base_cents)}</div>
+    </div>
+  `;
+}
+
 function renderTransactionList(): void {
   const container = el<HTMLDivElement>('tx-list');
   const emptyMsg = el<HTMLParagraphElement>('tx-empty');
@@ -314,7 +398,6 @@ function renderTransactionList(): void {
       if (tx.id === state.editingTxId) {
         return renderEditRow(tx);
       }
-      const sign = tx.type === 'income';
       return `
         <div class="tx-row" data-id="${tx.id}">
           <div class="tx-date">${formatShortDate(tx.occurred_on)}</div>
@@ -322,7 +405,7 @@ function renderTransactionList(): void {
             <div class="tx-category">${escapeHtml(tx.category_name)}</div>
             ${tx.note ? `<div class="tx-note">${escapeHtml(tx.note)}</div>` : ''}
           </div>
-          <div class="tx-amount ${sign ? 'income' : 'expense'}">${formatCents(tx.amount_cents, sign)}</div>
+          ${renderTxAmount(tx)}
           <button type="button" class="tx-delete" data-id="${tx.id}" aria-label="Delete entry">&#10005;</button>
         </div>
       `;
@@ -335,6 +418,10 @@ function renderEditRow(tx: Transaction): string {
     .map((c) => `<option value="${c.id}" ${c.id === tx.category_id ? 'selected' : ''}>${escapeHtml(c.name)}</option>`)
     .join('');
   const dollars = (tx.amount_cents / 100).toFixed(2);
+  const baseOptions = currencyOptions();
+  const currencyOpts = (baseOptions.includes(tx.currency) ? baseOptions : [...baseOptions, tx.currency])
+    .map((c) => `<option value="${c}" ${c === tx.currency ? 'selected' : ''}>${c}</option>`)
+    .join('');
   return `
     <div class="tx-edit-row" data-edit-id="${tx.id}">
       <div class="tx-edit-grid">
@@ -344,7 +431,14 @@ function renderEditRow(tx: Transaction): string {
         </div>
         <div class="field">
           <label>Amount</label>
-          <input type="text" inputmode="decimal" class="tx-edit-amount" value="${dollars}" />
+          <div class="amount-input-wrap tx-edit-amount-wrap">
+            <div class="currency-picker">
+              <span class="currency-picker-symbol tx-edit-currency-symbol">${currencySymbol(tx.currency)}</span>
+              <span class="currency-picker-caret" aria-hidden="true">&#9662;</span>
+              <select class="tx-edit-currency currency-picker-select" aria-label="Currency">${currencyOpts}</select>
+            </div>
+            <input type="text" inputmode="decimal" class="tx-edit-amount" value="${dollars}" />
+          </div>
         </div>
         <div class="field">
           <label>Date</label>
@@ -365,6 +459,13 @@ function renderEditRow(tx: Transaction): string {
 
 function wireTransactionList(): void {
   const container = el<HTMLDivElement>('tx-list');
+
+  container.addEventListener('change', (e) => {
+    const currencySel = (e.target as HTMLElement).closest<HTMLSelectElement>('.tx-edit-currency');
+    if (!currencySel) return;
+    const symbolEl = currencySel.closest('.currency-picker')?.querySelector<HTMLSpanElement>('.tx-edit-currency-symbol');
+    if (symbolEl) symbolEl.textContent = currencySymbol(currencySel.value);
+  });
 
   container.addEventListener('click', async (e) => {
     const target = e.target as HTMLElement;
@@ -389,10 +490,11 @@ function wireTransactionList(): void {
       if (!editRow?.dataset.editId) return;
       const id = Number(editRow.dataset.editId);
       const categorySel = editRow.querySelector<HTMLSelectElement>('.tx-edit-category');
+      const currencySel = editRow.querySelector<HTMLSelectElement>('.tx-edit-currency');
       const amountInput = editRow.querySelector<HTMLInputElement>('.tx-edit-amount');
       const dateInput = editRow.querySelector<HTMLInputElement>('.tx-edit-date');
       const noteInput = editRow.querySelector<HTMLInputElement>('.tx-edit-note');
-      if (!categorySel || !amountInput || !dateInput || !noteInput) return;
+      if (!categorySel || !currencySel || !amountInput || !dateInput || !noteInput) return;
 
       const cents = dollarsToCents(amountInput.value);
       if (cents === null || cents <= 0) {
@@ -403,6 +505,7 @@ function wireTransactionList(): void {
         patchTransaction(id, {
           category_id: Number(categorySel.value),
           amount_cents: cents,
+          currency: currencySel.value,
           occurred_on: dateInput.value,
           note: noteInput.value.trim() || null,
         }),

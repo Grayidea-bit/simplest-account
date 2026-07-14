@@ -1,5 +1,6 @@
 import { Hono } from 'hono';
 import type { Env } from '../types';
+import { getRatesToTWD, isSupportedCurrency, RatesUnavailableError, type Currency } from '../rates';
 
 export const transactions = new Hono<{ Bindings: Env }>();
 
@@ -11,6 +12,9 @@ interface TransactionRow {
   amount_cents: number;
   note: string;
   occurred_on: string;
+  currency: string;
+  fx_rate: number;
+  base_cents: number;
 }
 
 interface TransactionRowNoName {
@@ -21,6 +25,9 @@ interface TransactionRowNoName {
   note: string;
   occurred_on: string;
   created_at: string;
+  currency: Currency;
+  fx_rate: number;
+  base_cents: number;
 }
 
 interface CategoryLookupRow {
@@ -35,6 +42,7 @@ interface TxBody {
   amount_cents?: unknown;
   note?: unknown;
   occurred_on?: unknown;
+  currency?: unknown;
 }
 
 const MONTH_RE = /^\d{4}-(0[1-9]|1[0-2])$/;
@@ -65,7 +73,8 @@ async function fetchTransactionWithCategory(
 ): Promise<TransactionRow | null> {
   const row = await db
     .prepare(
-      `SELECT t.id, t.type, t.category_id, c.name AS category_name, t.amount_cents, t.note, t.occurred_on
+      `SELECT t.id, t.type, t.category_id, c.name AS category_name, t.amount_cents, t.note, t.occurred_on,
+              t.currency, t.fx_rate, t.base_cents
        FROM transactions t JOIN categories c ON c.id = t.category_id
        WHERE t.id = ?`
     )
@@ -81,7 +90,8 @@ transactions.get('/', async (c) => {
   }
 
   const { results } = await c.env.DB.prepare(
-    `SELECT t.id, t.type, t.category_id, c.name AS category_name, t.amount_cents, t.note, t.occurred_on
+    `SELECT t.id, t.type, t.category_id, c.name AS category_name, t.amount_cents, t.note, t.occurred_on,
+            t.currency, t.fx_rate, t.base_cents
      FROM transactions t JOIN categories c ON c.id = t.category_id
      WHERE t.occurred_on LIKE ?
      ORDER BY t.occurred_on DESC, t.id DESC`
@@ -97,6 +107,7 @@ transactions.post('/', async (c) => {
 
   const { type, category_id: categoryId, amount_cents: amountCents, occurred_on: occurredOn } = body;
   const note = typeof body.note === 'string' ? body.note : '';
+  const currency = body.currency === undefined ? 'TWD' : body.currency;
 
   if (!isValidType(type)) {
     return c.json(errorResponse('validation_error', "type must be 'income' or 'expense'"), 400);
@@ -109,6 +120,9 @@ transactions.post('/', async (c) => {
   }
   if (typeof occurredOn !== 'string' || !isValidCalendarDate(occurredOn)) {
     return c.json(errorResponse('validation_error', "occurred_on must be a valid 'YYYY-MM-DD' date"), 400);
+  }
+  if (!isSupportedCurrency(currency)) {
+    return c.json(errorResponse('validation_error', 'currency is not supported'), 400);
   }
 
   const category = await c.env.DB.prepare(
@@ -124,12 +138,28 @@ transactions.post('/', async (c) => {
     return c.json(errorResponse('category_mismatch', 'category type does not match transaction type'), 400);
   }
 
+  let fxRate = 1;
+  let baseCents = amountCents;
+
+  if (currency !== 'TWD') {
+    try {
+      const { rates: rateMap } = await getRatesToTWD(c.env.DB);
+      fxRate = rateMap[currency];
+      baseCents = Math.round(amountCents * fxRate);
+    } catch (err) {
+      if (err instanceof RatesUnavailableError) {
+        return c.json(errorResponse('rates_unavailable', err.message), 503);
+      }
+      throw err;
+    }
+  }
+
   const inserted = await c.env.DB.prepare(
-    `INSERT INTO transactions (type, category_id, amount_cents, note, occurred_on)
-     VALUES (?, ?, ?, ?, ?)
+    `INSERT INTO transactions (type, category_id, amount_cents, note, occurred_on, currency, fx_rate, base_cents)
+     VALUES (?, ?, ?, ?, ?, ?, ?, ?)
      RETURNING id`
   )
-    .bind(type, categoryId, amountCents, note, occurredOn)
+    .bind(type, categoryId, amountCents, note, occurredOn, currency, fxRate, baseCents)
     .first<{ id: number }>();
 
   if (!inserted) {
@@ -147,7 +177,7 @@ transactions.patch('/:id', async (c) => {
   }
 
   const existing = await c.env.DB.prepare(
-    'SELECT id, type, category_id, amount_cents, note, occurred_on, created_at FROM transactions WHERE id = ?'
+    'SELECT id, type, category_id, amount_cents, note, occurred_on, created_at, currency, fx_rate, base_cents FROM transactions WHERE id = ?'
   )
     .bind(id)
     .first<TransactionRowNoName>();
@@ -163,6 +193,10 @@ transactions.patch('/:id', async (c) => {
   let amountCents = existing.amount_cents;
   let note = existing.note;
   let occurredOn = existing.occurred_on;
+  let currency = existing.currency;
+  let fxRate = existing.fx_rate;
+  let baseCents = existing.base_cents;
+  let recomputeFx = false;
 
   if (body.type !== undefined) {
     if (!isValidType(body.type)) {
@@ -185,6 +219,14 @@ transactions.patch('/:id', async (c) => {
       return c.json(errorResponse('validation_error', 'amount_cents must be a positive integer'), 400);
     }
     amountCents = body.amount_cents;
+    recomputeFx = true;
+  }
+  if (body.currency !== undefined) {
+    if (!isSupportedCurrency(body.currency)) {
+      return c.json(errorResponse('validation_error', 'currency is not supported'), 400);
+    }
+    currency = body.currency;
+    recomputeFx = true;
   }
   if (body.note !== undefined) {
     if (typeof body.note !== 'string') {
@@ -214,12 +256,30 @@ transactions.patch('/:id', async (c) => {
     }
   }
 
+  if (recomputeFx) {
+    if (currency === 'TWD') {
+      fxRate = 1;
+      baseCents = amountCents;
+    } else {
+      try {
+        const { rates: rateMap } = await getRatesToTWD(c.env.DB);
+        fxRate = rateMap[currency];
+        baseCents = Math.round(amountCents * fxRate);
+      } catch (err) {
+        if (err instanceof RatesUnavailableError) {
+          return c.json(errorResponse('rates_unavailable', err.message), 503);
+        }
+        throw err;
+      }
+    }
+  }
+
   await c.env.DB.prepare(
     `UPDATE transactions
-     SET type = ?, category_id = ?, amount_cents = ?, note = ?, occurred_on = ?
+     SET type = ?, category_id = ?, amount_cents = ?, note = ?, occurred_on = ?, currency = ?, fx_rate = ?, base_cents = ?
      WHERE id = ?`
   )
-    .bind(type, categoryId, amountCents, note, occurredOn, id)
+    .bind(type, categoryId, amountCents, note, occurredOn, currency, fxRate, baseCents, id)
     .run();
 
   const updated = await fetchTransactionWithCategory(c.env.DB, id);

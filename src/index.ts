@@ -4,6 +4,7 @@ import { authRoutes, requireAuth } from './auth';
 import { categories } from './routes/categories';
 import { transactions } from './routes/transactions';
 import { summary } from './routes/summary';
+import { rates } from './routes/rates';
 
 const app = new Hono<{ Bindings: Env }>();
 
@@ -13,6 +14,7 @@ app.route('/api/auth', authRoutes);
 app.route('/api/categories', categories);
 app.route('/api/transactions', transactions);
 app.route('/api/summary', summary);
+app.route('/api/rates', rates);
 
 app.notFound((c) => {
   return c.json({ error: { code: 'not_found', message: 'resource not found' } }, 404);

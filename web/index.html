@@ -90,7 +90,11 @@
                 <div class="field field-amount">
                   <label for="qa-amount">Amount</label>
                   <div class="amount-input-wrap">
-                    <span class="amount-prefix" aria-hidden="true">$</span>
+                    <div class="currency-picker">
+                      <span id="qa-currency-symbol" class="currency-picker-symbol" aria-hidden="true">NT$</span>
+                      <span class="currency-picker-caret" aria-hidden="true">&#9662;</span>
+                      <select id="qa-currency" class="currency-picker-select" aria-label="Currency"></select>
+                    </div>
                     <input id="qa-amount" type="text" inputmode="decimal" placeholder="0.00" autocomplete="off" required />
                   </div>
                 </div>
@@ -127,6 +131,10 @@
           </section>
         </div>
       </main>
+
+      <footer class="attribution">
+        匯率資料 Exchange rates: <a href="https://tw.rter.info" target="_blank" rel="noopener">RTER.info</a> (CC BY-SA)
+      </footer>
     </div>
 
     <!-- ============ CATEGORY MODAL ============ -->
