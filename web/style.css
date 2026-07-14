@@ -520,7 +520,7 @@
     min-height: var(--tap);
     background: var(--bg-elevated);
     border-radius: var(--radius-s);
-    padding: 0 10px 0 4px;
+    padding: 0 12px 0 5px;
     box-shadow: var(--input-ring);
     transition: box-shadow 140ms ease;
   }
@@ -530,7 +530,7 @@
   #qa-amount {
     border: none;
     background: transparent;
-    padding: 10px 4px;
+    padding: 6px 4px;
     font-size: 18px;
     font-variant-numeric: tabular-nums;
     box-shadow: none !important;
@@ -545,11 +545,12 @@
     display: flex;
     align-items: center;
     justify-content: center;
-    gap: 3px;
-    height: var(--tap);
-    min-width: 44px;
-    padding: 0 10px;
-    border-radius: var(--radius-s);
+    gap: 4px;
+    align-self: center;
+    height: 34px;
+    min-width: 46px;
+    padding: 0 9px;
+    border-radius: var(--radius-xs, 6px);
     background: #1f1f1f;
     box-shadow: rgb(18, 18, 18) 0px 1px 0px, rgb(90, 90, 90) 0px 0px 0px 1px inset;
     flex-shrink: 0;
@@ -567,9 +568,9 @@
     font-variant-numeric: tabular-nums;
   }
   .currency-picker-caret {
-    font-size: 8px;
+    font-size: 10px;
+    line-height: 1;
     color: var(--text-subdued);
-    transform: translateY(1px);
   }
   .currency-picker-select {
     position: absolute;
@@ -593,8 +594,8 @@
     background: var(--bg-surface);
   }
   .tx-edit-amount-wrap .currency-picker {
-    height: calc(var(--tap) - 8px);
-    min-width: 40px;
+    height: 32px;
+    min-width: 44px;
     padding: 0 8px;
   }
   .tx-edit-amount-wrap .tx-edit-amount {
@@ -603,7 +604,7 @@
     border: none !important;
     background: transparent !important;
     box-shadow: none !important;
-    padding: 8px 4px !important;
+    padding: 6px 4px !important;
   }
 
   .field-note { margin-top: 12px; }
