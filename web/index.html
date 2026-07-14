@@ -1,0 +1,160 @@
+<!doctype html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover" />
+  <meta name="color-scheme" content="light dark" />
+  <title>The Simplest Account</title>
+  <link rel="icon" href="data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 100 100'%3E%3Ccircle cx='50' cy='50' r='46' fill='%232f6f4f'/%3E%3Ctext x='50' y='68' font-size='58' text-anchor='middle' fill='%23f3ead9' font-family='Georgia,serif'%3E%C2%A7%3C/text%3E%3C/svg%3E" />
+  <link rel="stylesheet" href="./style.css" />
+</head>
+<body>
+  <div id="app-root">
+
+    <!-- ============ LOGIN VIEW ============ -->
+    <div id="login-view" class="login-view" hidden>
+      <div class="login-card">
+        <div class="login-seal" aria-hidden="true">§</div>
+        <h1 class="login-title">The Simplest<br />Account</h1>
+        <p class="login-sub">A ledger, kept honestly.</p>
+        <form id="login-form" novalidate>
+          <label class="visually-hidden" for="passcode">Passcode</label>
+          <input
+            id="passcode"
+            name="passcode"
+            type="password"
+            inputmode="numeric"
+            autocomplete="current-password"
+            placeholder="Passcode"
+            required
+          />
+          <button type="submit" class="stamp-btn login-submit">
+            <span>Unlock</span>
+          </button>
+          <p id="login-error" class="form-error" role="alert" hidden></p>
+        </form>
+      </div>
+    </div>
+
+    <!-- ============ APP VIEW ============ -->
+    <div id="app-view" class="app-view" hidden>
+      <header class="topbar">
+        <div class="brand">
+          <span class="brand-seal" aria-hidden="true">§</span>
+          <div class="brand-text">
+            <h1>The Simplest Account</h1>
+            <p class="brand-tagline">kept in full, spent in peace</p>
+          </div>
+        </div>
+        <div class="topbar-actions">
+          <button id="settings-btn" class="icon-btn" type="button" aria-label="Manage categories" title="Manage categories">
+            <svg viewBox="0 0 24 24" width="20" height="20" aria-hidden="true">
+              <path fill="currentColor" d="M11.1 2.6c.2-.8 1.6-.8 1.8 0l.4 1.6c.9.2 1.7.6 2.4 1.1l1.5-.7c.7-.4 1.6.4 1.3 1.1l-.7 1.5c.5.7.9 1.5 1.1 2.4l1.6.4c.8.2.8 1.6 0 1.8l-1.6.4c-.2.9-.6 1.7-1.1 2.4l.7 1.5c.4.7-.4 1.6-1.1 1.3l-1.5-.7c-.7.5-1.5.9-2.4 1.1l-.4 1.6c-.2.8-1.6.8-1.8 0l-.4-1.6c-.9-.2-1.7-.6-2.4-1.1l-1.5.7c-.7.4-1.6-.4-1.3-1.1l.7-1.5a7.6 7.6 0 0 1-1.1-2.4l-1.6-.4c-.8-.2-.8-1.6 0-1.8l1.6-.4c.2-.9.6-1.7 1.1-2.4l-.7-1.5c-.4-.7.4-1.6 1.1-1.3l1.5.7c.7-.5 1.5-.9 2.4-1.1l.4-1.6ZM12 8.4a3.6 3.6 0 1 0 0 7.2 3.6 3.6 0 0 0 0-7.2Z"/>
+            </svg>
+          </button>
+          <button id="logout-btn" class="icon-btn" type="button" aria-label="Log out" title="Log out">
+            <svg viewBox="0 0 24 24" width="19" height="19" aria-hidden="true">
+              <path fill="currentColor" d="M10 3a1 1 0 0 1 0 2H6a1 1 0 0 0-1 1v12a1 1 0 0 0 1 1h4a1 1 0 1 1 0 2H6a3 3 0 0 1-3-3V6a3 3 0 0 1 3-3h4Zm5.3 3.3a1 1 0 0 1 1.4 0l4 4a1 1 0 0 1 0 1.4l-4 4a1 1 0 0 1-1.4-1.4L17.6 13H10a1 1 0 1 1 0-2h7.6l-2.3-2.3a1 1 0 0 1 0-1.4Z"/>
+            </svg>
+          </button>
+        </div>
+      </header>
+
+      <nav class="month-nav" aria-label="Month selection">
+        <button id="prev-month" class="month-btn" type="button" aria-label="Previous month">&#9668;</button>
+        <div class="month-display">
+          <div id="month-label" class="month-label">2026-07</div>
+          <div id="month-sub" class="month-sub">July</div>
+        </div>
+        <button id="next-month" class="month-btn" type="button" aria-label="Next month">&#9658;</button>
+      </nav>
+
+      <main class="ledger-main">
+        <section id="balance-card" class="card balance-card" aria-live="polite">
+          <!-- filled by main.ts -->
+        </section>
+
+        <section class="card quick-add">
+          <h2 class="section-title">Add an entry</h2>
+          <form id="quick-add-form" novalidate>
+            <div class="type-toggle" id="type-toggle" role="tablist" aria-label="Entry type">
+              <button type="button" class="type-btn active" data-type="expense" role="tab" aria-selected="true">Expense</button>
+              <button type="button" class="type-btn" data-type="income" role="tab" aria-selected="false">Income</button>
+            </div>
+
+            <div id="category-chips" class="chip-row" role="listbox" aria-label="Category"></div>
+
+            <div class="quick-add-grid">
+              <div class="field field-amount">
+                <label for="qa-amount">Amount</label>
+                <div class="amount-input-wrap">
+                  <span class="amount-prefix" aria-hidden="true">$</span>
+                  <input id="qa-amount" type="text" inputmode="decimal" placeholder="0.00" autocomplete="off" required />
+                </div>
+              </div>
+              <div class="field field-date">
+                <label for="qa-date">Date</label>
+                <input id="qa-date" type="date" required />
+              </div>
+            </div>
+
+            <div class="field field-note">
+              <label for="qa-note">Note <span class="optional">optional</span></label>
+              <input id="qa-note" type="text" placeholder="what was it for?" maxlength="200" autocomplete="off" />
+            </div>
+
+            <p id="qa-error" class="form-error" role="alert" hidden></p>
+
+            <button type="submit" class="stamp-btn add-btn">
+              <span>Add entry</span>
+            </button>
+          </form>
+        </section>
+
+        <section class="card distribution">
+          <h2 class="section-title">Where it went</h2>
+          <div id="chart-container" class="chart-container"></div>
+        </section>
+
+        <section class="card transactions">
+          <h2 class="section-title">Entries this month</h2>
+          <div id="tx-list" class="tx-list"></div>
+          <p id="tx-empty" class="tx-empty" hidden>No entries yet — add your first one above.</p>
+        </section>
+      </main>
+    </div>
+
+    <!-- ============ CATEGORY MODAL ============ -->
+    <div id="category-modal" class="modal-overlay" hidden>
+      <div class="modal" role="dialog" aria-modal="true" aria-labelledby="modal-title">
+        <div class="modal-header">
+          <h2 id="modal-title">Manage categories</h2>
+          <button id="modal-close" class="icon-btn" type="button" aria-label="Close">&#10005;</button>
+        </div>
+        <div class="modal-body">
+          <div class="cat-group">
+            <h3 class="cat-group-title expense-tone">Expense</h3>
+            <div id="cat-list-expense" class="cat-list"></div>
+            <form class="cat-add-form" data-type="expense">
+              <input type="text" placeholder="New expense category" maxlength="40" required />
+              <button type="submit">Add</button>
+            </form>
+          </div>
+          <div class="cat-group">
+            <h3 class="cat-group-title income-tone">Income</h3>
+            <div id="cat-list-income" class="cat-list"></div>
+            <form class="cat-add-form" data-type="income">
+              <input type="text" placeholder="New income category" maxlength="40" required />
+              <button type="submit">Add</button>
+            </form>
+          </div>
+        </div>
+      </div>
+    </div>
+
+    <div id="toast" class="toast" hidden></div>
+  </div>
+
+  <script type="module" src="./main.ts"></script>
+</body>
+</html>
