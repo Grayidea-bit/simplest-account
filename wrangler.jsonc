@@ -8,6 +8,6 @@
     "run_worker_first": ["/api/*"]
   },
   "d1_databases": [
-    { "binding": "DB", "database_name": "simplest-account", "database_id": "REPLACE_AFTER_D1_CREATE", "migrations_dir": "migrations" }
+    { "binding": "DB", "database_name": "simplest-account", "database_id": "a9fde6f6-5ba9-49e9-8c50-c399a1e35ec0", "migrations_dir": "migrations" }
   ]
 }
