@@ -417,6 +417,10 @@
   .balance-total.negative { color: var(--negative); }
   .balance-total.positive { color: var(--text-bright); }
 
+  /* Today's net kept in the muted grey — understated next to the
+     green income / red expense stats, not competing with them. */
+  .balance-stat-value.today { color: var(--text-subdued); }
+
   /* -- type toggle -- */
   .type-toggle {
     display: flex;

@@ -281,7 +281,6 @@ function renderBalanceCard(): void {
   const negative = s.balance < 0;
   const today = state.todaySummary;
   const todayNet = today ? today.income_total - today.expense_total : 0;
-  const todayNegative = todayNet < 0;
   card.innerHTML = `
     <div class="balance-row">
       <div class="balance-stat">
@@ -293,8 +292,8 @@ function renderBalanceCard(): void {
         <div class="balance-stat-value expense">${formatCents(s.expense_total)}</div>
       </div>
       <div class="balance-stat">
-        <div class="balance-stat-label">日餘額</div>
-        <div class="balance-stat-value ${todayNegative ? 'negative' : 'positive'}">${formatCents(todayNet)}</div>
+        <div class="balance-stat-label">Bal Today</div>
+        <div class="balance-stat-value today">${formatCents(todayNet)}</div>
       </div>
     </div>
     <div class="balance-total-label">Balance</div>
